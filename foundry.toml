@@ -4,7 +4,7 @@ out = "out"
 libs = ["lib"]
 
 [rpc_endpoints]
-sepolia = "https://sepolia.infura.io/v3/5449b28ed8e8466196ae3ae0d8afc5af"
-mainnet = "https://mainnet.infura.io/v3/5449b28ed8e8466196ae3ae0d8afc5af"
+sepolia = "https://sepolia.infura.io/v3/RPC_URL"
+mainnet = "https://mainnet.infura.io/v3/RPC_URL"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
