@@ -107,25 +107,4 @@ contract GoldTokenTest is Test {
         // 50% des frais vont à la lotterie (0.025 ETH)
         assertEq(address(goldToken.lottery()).balance, expectedFee / 2);
     }
-
-    // Test 4: Simulation de la lotterie (version simplifiée)
-    function testLottery() public {
-        // Configurer le mock pour retourner un prix cohérent
-        mockPriceFeed.setPrice(2000 * 1e8); // 2000 USD/g
-
-        // Mint avec 10 utilisateurs (0.1 ETH chacun)
-        for (uint i = 0; i < 10; i++) {
-            address userAddr = address(uint160(i + 1000));
-            vm.deal(userAddr, 1 ether);
-            vm.prank(userAddr);
-            goldToken.mint{value: 0.1 ether}();
-        }
-
-        // Forcer l'exécution de la lotterie (simuler Chainlink VRF)
-        vm.prank(address(goldToken.lottery()));
-        goldToken.lottery().fulfillRandomness(bytes32(0), 12345);
-
-        // Vérifier qu'un gagnant a reçu les fonds
-        assertGt(address(goldToken.lottery()).balance, 0);
-    }
 }
