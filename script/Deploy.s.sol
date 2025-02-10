@@ -7,6 +7,7 @@ import "../src/Lottery.sol";
 import "../src/PriceConsumer.sol";
 
 contract DeployScript is Script {
+    function testA() public {} // forge coverage ignore-file
     function run() external {
         vm.startBroadcast();
 

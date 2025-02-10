@@ -2,36 +2,42 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/PriceConsumer.sol";
-import "./mocks/MockAggregatorV3.sol";
+import "@contracts/PriceConsumer.sol";
+import "@chainlink/lib/chainlink-brownie-contracts/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@mocks/MockAggregator.sol";
 
+/// @notice Test du contrat PriceConsumer
 contract PriceConsumerTest is Test {
-    PriceConsumer priceConsumer;
-
-    // Adresse de l'oracle Chainlink pour XAU/USD sur Ethereum mainnet
-    address XAU_USD_ORACLE = 0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6;
+    MockAggregator public mockAggregator;
+    PriceConsumer public priceConsumer;
 
     function setUp() public {
-        // Déployer le contrat avec l'adresse de l'oracle Chainlink
-        priceConsumer = new PriceConsumer(XAU_USD_ORACLE);
+        // Pour un test simple, on initialise le mock avec un prix positif.
+        // Par exemple, un prix de 2000 avec 8 décimales : 2000 * 1e8.
+        int256 initialPrice = 2000 * int256(10**8);
+        mockAggregator = new MockAggregator(initialPrice);
+        priceConsumer = new PriceConsumer(address(mockAggregator));
     }
 
-    function testGetGoldPrice() public {
+    /// @notice Vérifie que getGoldPrice() renvoie le prix converti correctement.
+    /// Avec un prix initial de 2000 * 1e8, la conversion est : 2000e8 * 1e10 = 2000e18.
+    function testGetGoldPriceValid() public {
+        uint256 expectedPrice = uint256(2000 * 10**8) * 10**10; // 2000 * 1e18
         uint256 goldPrice = priceConsumer.getGoldPrice();
-        
-        console.log("Gold Price (in wei):", goldPrice);
-
-        // Vérification que le prix est supérieur à zéro
-        assertGt(goldPrice, 0, "Valid price");
+        assertEq(goldPrice, expectedPrice);
     }
 
-    function testInvalidPrice() public {
-        // Déployer un mock avec un prix invalide (0)
-        MockAggregatorV3 mockOracle = new MockAggregatorV3(0);
-        PriceConsumer fakePriceConsumer = new PriceConsumer(address(mockOracle));
+    /// @notice Vérifie que getGoldPrice() reverte si l'agrégateur retourne 0.
+    function testGetGoldPriceRevertsOnZeroPrice() public {
+        mockAggregator.setPrice(0);
+        vm.expectRevert("Invalid price");
+        priceConsumer.getGoldPrice();
+    }
 
-        // On s'attend à un revert avec le message "Invalid price"
-        vm.expectRevert(bytes("Invalid price"));
-        fakePriceConsumer.getGoldPrice();
+    /// @notice Vérifie que getGoldPrice() reverte si l'agrégateur retourne un prix négatif.
+    function testGetGoldPriceRevertsOnNegativePrice() public {
+        mockAggregator.setPrice(-100);
+        vm.expectRevert("Invalid price");
+        priceConsumer.getGoldPrice();
     }
 }
