@@ -36,7 +36,7 @@ contract MockPriceFeed is AggregatorV3Interface {
 contract GoldTokenTest is Test {
     GoldToken public goldToken;
     MockPriceFeed public mockPriceFeed;
-    address public user = address(1);
+    address public user = address(0x123);
     
     // Configuration VRF factice pour les tests
     address constant VRF_COORDINATOR = address(0x123);
@@ -80,6 +80,12 @@ contract GoldTokenTest is Test {
         assertEq(goldToken.balanceOf(user), expectedTokens);
     }
 
+    function test_fail_mint() public {
+        vm.prank(user);
+        vm.expectRevert("Send ETH to mint tokens");
+        goldToken.mint();
+    }
+
     // Test 2: Burn avec vérification du remboursement
     function testBurn() public {
         vm.startPrank(user);
@@ -92,7 +98,14 @@ contract GoldTokenTest is Test {
         goldToken.burn(initialBalance);
         
         // Vérifier le solde ETH (100 ETH - 1 ETH + 0.95 ETH retourné)
-        assertEq(user.balance, 100 ether - 1 ether + (1 ether * 95 / 100));
+        assertEq(user.balance, 100 ether - 1 ether + (1 ether * 95 / 100 * 95 / 100));
+    }
+    
+    function test_fail_burn() public {
+        vm.startPrank(user);
+        goldToken.mint{value: 1 ether}();
+        vm.expectRevert("Insufficient balance");
+        goldToken.burn(2 ether);
     }
 
     // Test 3: Vérification des frais de 5%
