@@ -1,2 +1,6 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @chainlink/=lib/foundry-chainlink-toolkit/
+@chainlink-ccip/=lib/ccip/contracts
+@contracts=src
+@mocks=test/mocks
+
