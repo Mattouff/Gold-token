@@ -19,6 +19,9 @@ contract Lottery is VRFConsumerBase {
         fee = _vrfFee;
     }
 
+    /// @notice Fallback function to accept ETH deposits.
+    receive() external payable {}
+
     function distributeFees() external payable {
         require(msg.value > 0, "No fees to distribute");
         lotteryPool += msg.value;
