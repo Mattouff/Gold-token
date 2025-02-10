@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 // Import des outils de test de Foundry et du contrat à tester.
 import "forge-std/Test.sol";
-import "../src/Lottery.sol";
+import "@contracts/Lottery.sol";
 
 /*
   Ce fichier de test vérifie plusieurs comportements :

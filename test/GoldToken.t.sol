@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/GoldToken.sol";
-import "../src/PriceConsumer.sol";
-import "../src/Lottery.sol";
+import "@contracts/GoldToken.sol";
+import "@contracts/PriceConsumer.sol";
+import "@contracts/Lottery.sol";
 
 contract GoldTokenTest is Test {
     GoldToken public goldToken;
