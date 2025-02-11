@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 /*//////////////////////////////////////////////////////////////
-                           IMPORTS
+//                           IMPORTS
 //////////////////////////////////////////////////////////////*/
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -10,7 +10,7 @@ import "@contracts/Lottery.sol";
 import "@contracts/PriceConsumer.sol";
 
 /*//////////////////////////////////////////////////////////////
-                      GOLD TOKEN CONTRACT
+//                      GOLD TOKEN CONTRACT
 //////////////////////////////////////////////////////////////*/
 /// @title GoldToken
 /// @notice ERC20 token representing gold that can be minted with ETH and burned to redeem ETH.
@@ -37,19 +37,21 @@ contract GoldToken is ERC20 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Constructs the GoldToken contract.
-    /// @param _priceFeedAddress Address of the price feed for gold.
+    /// @param _xauusdAddress Address of the XAU/USD price feed.
+    /// @param _ethusdAddress Address of the ETH/USD price feed.
     /// @param _vrfCoordinator Address of the VRF coordinator for the lottery.
     /// @param _linkToken Address of the LINK token used by the lottery.
     /// @param _keyHash Key hash used for VRF.
     /// @param _vrfFee Fee required for VRF.
     constructor(
-        address _priceFeedAddress,
+        address _xauusdAddress,
+        address _ethusdAddress,
         address _vrfCoordinator,
         address _linkToken,
         bytes32 _keyHash,
         uint256 _vrfFee
     ) ERC20("GoldToken", "GLD") {
-        priceConsumer = new PriceConsumer(_priceFeedAddress);
+        priceConsumer = new PriceConsumer(_xauusdAddress, _ethusdAddress);
         lottery = new Lottery(_vrfCoordinator, _linkToken, _keyHash, _vrfFee);
     }
 
@@ -59,7 +61,7 @@ contract GoldToken is ERC20 {
 
     /// @notice Mints GoldToken by sending ETH.
     /// @dev 5% fee is deducted from the sent ETH, and 50% of that fee is forwarded to the lottery.
-    /// @dev The number of tokens minted is calculated based on the ETH received after fee deduction and the current gold price.
+    ///      The number of tokens minted is calculated based on the ETH received after fee deduction and the current gold price.
     function mint() external payable {
         require(msg.value > 0, "Send ETH to mint tokens");
 
