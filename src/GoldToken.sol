@@ -52,7 +52,7 @@ contract GoldToken is ERC20 {
         uint256 _vrfFee
     ) ERC20("GoldToken", "GLD") {
         priceConsumer = new PriceConsumer(_xauusdAddress, _ethusdAddress);
-        lottery = new Lottery(_vrfCoordinator, _linkToken, _keyHash, _vrfFee);
+        lottery = new Lottery(7032);
     }
 
     /*//////////////////////////////////////////////////////////////
