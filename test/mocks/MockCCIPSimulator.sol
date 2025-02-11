@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@mocks/MockCCIPRouter.t.sol";
-import "@mocks/MockWETH.t.sol";
+import "@mocks/MockCCIPRouter.sol";
+import "@mocks/MockWETH.sol";
 import "@chainlink-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 contract MockCCIPSimulator {
