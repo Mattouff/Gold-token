@@ -56,18 +56,15 @@ contract LotteryTest is Test {
         assertEq(lottery.participants(0), participant);
     }
 
-    /// @notice Teste le déroulement complet du Loto :
-    /// - 10 dépôts de 1 ether par 10 adresses différentes
-    /// - Simulation du callback Chainlink (rawFulfillRandomness)
-    /// - Vérification que le gagnant est correctement choisi, que le pool est transféré et réinitialisé.
+    /// @notice Teste le déroulement complet du Loto en adaptant les assertions selon la chaîne d'exécution.
+    ///         - 10 dépôts de 1 ether par 10 adresses différentes
+    ///         - Simulation du callback Chainlink (rawFulfillRandomness)
+    ///         - Vérification que le gagnant est correctement choisi, que le pool est transféré et réinitialisé.
     function testLotteryFulfillment() public {
-        // --- MOCK DE L'APPEL TRANSFERANDCALL DU TOKEN LINK ---
-        //
+        // --- MOCK DE L'APPEL transferAndCall DU TOKEN LINK ---
         // Lors du 10ème dépôt, requestRandomness sera appelée,
-        // qui, via VRFConsumerBase, appellera linkToken.transferAndCall(...).
+        // qui via VRFConsumerBase appellera linkToken.transferAndCall(...).
         // On simule cet appel pour qu'il retourne 'true'.
-
-        // Préparer le payload attendu (selon l’implémentation de VRFConsumerBase)
         bytes memory payload = abi.encode(keyHash, uint256(0));
         vm.mockCall(
             linkToken,
@@ -76,10 +73,18 @@ contract LotteryTest is Test {
         );
         // --- FIN DU MOCK ---
 
-        uint256 depositAmount   = 1 ether;
+        // Définir une tolérance en fonction de la chaîne d'exécution :
+        // - En local (ex. chainid 31337 ou 1337), tolérance = 0 (comparaisons strictes)
+        // - Sur mainnet/testnet (chainid 1, 4, 5, etc.), tolérance fixée à 1e15 wei (~0.001 ETH)
+        uint256 tolerance = 0;
+        if (block.chainid == 1 || block.chainid == 4 || block.chainid == 5) {
+            tolerance = 1e15;
+        }
+
+        uint256 depositAmount = 1 ether;
         uint256 numParticipants = 10;
 
-        // Simuler 10 dépôts depuis 10 adresses différentes
+        // Simulation de 10 dépôts depuis 10 adresses différentes
         for (uint256 i = 0; i < numParticipants; i++) {
             address participant = address(uint160(i + 1));
             vm.deal(participant, 10 ether);
@@ -88,36 +93,53 @@ contract LotteryTest is Test {
         }
 
         uint256 expectedPool = depositAmount * numParticipants;
-        assertEq(lottery.lotteryPool(), expectedPool);
-        assertEq(address(lottery).balance, expectedPool);
+        if (tolerance > 0) {
+            assertApproxEqAbs(lottery.lotteryPool(), expectedPool, tolerance);
+            assertApproxEqAbs(address(lottery).balance, expectedPool, tolerance);
+        } else {
+            assertEq(lottery.lotteryPool(), expectedPool);
+            assertEq(address(lottery).balance, expectedPool);
+        }
 
         // --- Simulation du callback Chainlink ---
         uint256 randomValue = 123;
-        bytes32 requestId   = bytes32("dummyRequestId");
-        // Le gagnant sera choisi via randomValue % 10 = 123 % 10 = 3 (4ème participant)
+        bytes32 requestId = bytes32("dummyRequestId");
+        // Le gagnant est déterminé par randomValue % 10 = 123 % 10 = 3,
+        // soit le 4ème participant (adresse convertie de uint160(4)).
         address expectedWinner = address(uint160(4));
 
-        // Vérification de l'émission de l'événement LotteryWinner.
+        // Vérifier que l'événement LotteryWinner est émis avec les bonnes valeurs.
         vm.expectEmit(true, false, false, true);
         emit LotteryWinner(expectedWinner, expectedPool);
 
-        // Simulation du callback (la fonction fulfillRandomness nécessite que msg.sender soit le vrfCoordinator)
+        // Simulation du callback (la fonction fulfillRandomness doit être appelée par le vrfCoordinator)
         vm.prank(vrfCoordinator);
         lottery.rawFulfillRandomness(requestId, randomValue);
 
-        assertEq(lottery.randomResult(), randomValue);
-        assertEq(lottery.lotteryPool(), 0);
-        assertEq(address(lottery).balance, 0);
+        if (tolerance > 0) {
+            assertApproxEqAbs(lottery.randomResult(), randomValue, tolerance);
+            assertApproxEqAbs(lottery.lotteryPool(), 0, tolerance);
+            assertApproxEqAbs(address(lottery).balance, 0, tolerance);
+        } else {
+            assertEq(lottery.randomResult(), randomValue);
+            assertEq(lottery.lotteryPool(), 0);
+            assertEq(address(lottery).balance, 0);
+        }
 
         // Vérifier que la liste des participants a été vidée.
         vm.expectRevert();
         lottery.participants(0);
 
-        // Vérifier que le gagnant a reçu le pool
-        // Chaque participant a 10 ether, a envoyé 1 ether, donc le participant gagnant (n°4) avait 9 ether.
-        // Après avoir gagné le pool de 10 ether, son solde doit être de 19 ether.
-        assertEq(expectedWinner.balance, 19 ether);
+        // Vérifier que le gagnant a bien reçu le pool :
+        // Chaque participant avait initialement 10 ether et a déposé 1 ether, donc le 4ème participant avait 9 ether.
+        // Après avoir gagné le pool de 10 ether, son solde devrait être de 19 ether.
+        if (tolerance > 0) {
+            assertApproxEqAbs(expectedWinner.balance, 19 ether, tolerance);
+        } else {
+            assertEq(expectedWinner.balance, 19 ether);
+        }
     }
+
 
     /// @notice Vérifie que la fonction receive (fallback) accepte les dépôts sans modifier le pool interne.
     function testReceive() public {

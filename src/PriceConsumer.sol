@@ -19,28 +19,36 @@ contract PriceConsumer {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The Chainlink price feed interface.
-    AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface internal xauusdAggregator;
+
+    AggregatorV3Interface internal ethusdAggregator;
 
     /*//////////////////////////////////////////////////////////////
                         CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Initializes the PriceConsumer contract.
-    /// @param _priceFeedAddress The address of the Chainlink price feed.
-    constructor(address _priceFeedAddress) {
-        priceFeed = AggregatorV3Interface(_priceFeedAddress);
+    constructor(address _xauusdAddress, address _ethusdAddress) {
+        xauusdAggregator = AggregatorV3Interface(_xauusdAddress);
+        ethusdAggregator = AggregatorV3Interface(_ethusdAddress);
     }
 
     /*//////////////////////////////////////////////////////////////
                         PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Retrieves the current gold price in wei.
-    /// @dev Calls latestRoundData() on the price feed and converts the returned price to wei.
-    /// @return The gold price in wei.
     function getGoldPrice() public view returns (uint256) {
-        (, int price, , , ) = priceFeed.latestRoundData();
-        require(price > 0, "Invalid price");
-        return uint256(price) * 1e10; // Conversion to wei (assuming the price feed returns 8 decimals)
+        (, int256 xauPrice, , , ) = xauusdAggregator.latestRoundData();
+        (, int256 ethPrice, , , ) = ethusdAggregator.latestRoundData();
+
+        require(xauPrice > 0, "XAU price feed error");
+        require(ethPrice > 0, "ETH price feed error");
+
+        // Conversion des prix de 8 décimales à 18 décimales
+        uint256 xauUsd = uint256(xauPrice) * 1e10; // 1 XAU en USD (18 décimales)
+        uint256 ethUsd = uint256(ethPrice) * 1e10; // 1 ETH en USD (18 décimales)
+
+        // Retourne la valeur de 1 gramme d'or (1/31.1035 XAU) en ETH
+        return (xauUsd * 1e18) / (ethUsd * 311035); // 1 XAU = 31.1035 grammes
     }
 }

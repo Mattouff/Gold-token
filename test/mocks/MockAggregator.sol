@@ -3,47 +3,34 @@ pragma solidity ^0.8.0;
 
 import "@chainlink/lib/chainlink-brownie-contracts/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-/// @notice Contrat mock pour simuler un agrégateur Chainlink
+/// @title MockAggregator
+/// @notice Un mock de l'agrégateur de Chainlink pour simuler latestRoundData().
 contract MockAggregator is AggregatorV3Interface {
-    int256 public price; // La valeur actuelle du prix
+
+    function testA() public {} // forge coverage ignore-file
+
     uint8 public override decimals;
     string public override description;
     uint256 public override version;
     uint80 public roundId;
 
-    function testA() public {} // forge coverage ignore-file
+    int256 public answer;
 
-    constructor(int256 _price) {
-        price = _price;
-        decimals = 8; // Les agrégateurs Chainlink typiques utilisent 8 décimales
+    constructor(int256 _answer) {
+        decimals = 8; // typiquement 8 décimales pour les agrégateurs Chainlink
         description = "Mock Aggregator";
         version = 1;
         roundId = 1;
+        answer = _answer;
     }
 
-    /// @notice Permet de modifier le prix retourné (pour les tests)
-    function setPrice(int256 _price) external {
-        price = _price;
+    /// @notice Permet de mettre à jour la réponse simulée.
+    function setAnswer(int256 _answer) public {
+        answer = _answer;
     }
 
-    /// @notice Renvoie les données de la dernière ronde
+    /// @notice Simule la fonction latestRoundData().
     function latestRoundData()
-        external
-        view
-        override
-        returns (
-            uint80,    // roundId
-            int256,    // answer
-            uint256,   // startedAt
-            uint256,   // updatedAt
-            uint80     // answeredInRound
-        )
-    {
-        return (roundId, price, 0, 0, roundId);
-    }
-
-    /// @notice Fonction supplémentaire de l'interface (non utilisée dans PriceConsumer)
-    function getRoundData(uint80 /*_roundId*/)
         external
         view
         override
@@ -55,6 +42,22 @@ contract MockAggregator is AggregatorV3Interface {
             uint80
         )
     {
-        return (roundId, price, 0, 0, roundId);
+        return (roundId, answer, 0, 0, roundId);
+    }
+
+    /// @notice Simule la fonction getRoundData().
+    function getRoundData(uint80 /* _roundId */)
+        external
+        view
+        override
+        returns (
+            uint80,
+            int256,
+            uint256,
+            uint256,
+            uint80
+        )
+    {
+        return (roundId, answer, 0, 0, roundId);
     }
 }

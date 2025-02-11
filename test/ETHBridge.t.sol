@@ -3,10 +3,10 @@ pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
 import "@contracts/ETHBridge.sol";
-import "@mocks/MockCCIPRouter.t.sol";
-import "@mocks/MockWETH.t.sol";
-import "@mocks/MockCCIPSimulator.t.sol";
-import "@mocks/MockETHBridge.t.sol";
+import "@mocks/MockCCIPRouter.sol";
+import "@mocks/MockWETH.sol";
+import "@mocks/MockCCIPSimulator.sol";
+import "@mocks/MockETHBridge.sol";
 
 contract ETHBridgeTest is Test {
     MockCCIPRouter private routerSource;
