@@ -54,14 +54,14 @@ contract GoldBridge is CCIPReceiver {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Constructs the GoldBridge contract.
-    /// @param router The CCIP router address.
+    /// @param _router The CCIP router address.
     /// @param _destinationChainId The destination chain ID (e.g. BSC chain id).
     /// @param _goldToken Address of the deployed GoldToken contract on this chain.
     constructor(
-        address router,
+        address _router,
         uint64 _destinationChainId,
-        address _goldToken
-    ) CCIPReceiver(router) {
+        address payable _goldToken
+    ) CCIPReceiver(_router) {
         destinationChainId = _destinationChainId;
         goldToken = GoldToken(_goldToken);
     }
