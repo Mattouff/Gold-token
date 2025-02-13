@@ -25,25 +25,26 @@ contract GoldBridgeTest is Test {
     uint64 public sourceChainId = 98;
     
     // Paramètres pour GoldToken (PriceConsumer et Lottery)
-    address public dummyXAUUSD = address(0x100);
-    address public dummyETHUSD = address(0x200);
-    address public dummyVRFCoordinator = address(0x300);
-    address public dummyLinkToken = address(0x400);
-    bytes32 public dummyKeyHash = bytes32("dummyKeyHash");
-    uint256 public dummyVrfFee = 0;
+    address constant DUMMY_XAUUSD = address(0x100);
+    address constant DUMMY_ETHUSD = address(0x200);
+    address constant DUMMY_VRFCOORDINATOR = address(0x300);
+    address constant DUMMY_LINKTOKEN = address(0x400);
+    bytes32 constant DUMMY_KEYHASH = bytes32("keyhash");
+    uint256 constant DUMMY_VRFFEES = 1 ether;
     
     function setUp() public {
         user = address(0x123);
         userDest = address(0x456);
         
         // Déployer GoldToken avec les adresses pour les agrégateurs et la loterie.
-        goldToken = new GoldToken(
-            dummyXAUUSD,
-            dummyETHUSD,
-            dummyVRFCoordinator,
-            dummyLinkToken,
-            dummyKeyHash,
-            dummyVrfFee
+        goldToken = new GoldToken();
+        goldToken.initialize(
+            DUMMY_XAUUSD,
+            DUMMY_ETHUSD,
+            DUMMY_VRFCOORDINATOR,
+            DUMMY_LINKTOKEN,
+            DUMMY_KEYHASH,
+            DUMMY_VRFFEES
         );
         // Forcer PriceConsumer.getGoldPrice() à retourner 1e18 pour simplifier les calculs.
         vm.mockCall(
@@ -53,7 +54,7 @@ contract GoldBridgeTest is Test {
         );
         
         // Déployer MockGoldBridge avec dummyRouter, destinationChainId et l'adresse de GoldToken.
-        bridge = new MockGoldBridge(dummyRouter, destinationChainId, address(goldToken));
+        bridge = new MockGoldBridge(dummyRouter, destinationChainId, payable(address(goldToken)));
     }
     
     /// @notice Teste la fonction sendGold().

@@ -4,18 +4,22 @@ pragma solidity ^0.8.0;
 /*//////////////////////////////////////////////////////////////
 //                           IMPORTS
 //////////////////////////////////////////////////////////////*/
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@contracts/Lottery.sol";
 import "@contracts/PriceConsumer.sol";
 
 /*//////////////////////////////////////////////////////////////
-//                      GOLD TOKEN CONTRACT
+//                     GOLD TOKEN UUPS CONTRACT
 //////////////////////////////////////////////////////////////*/
-/// @title GoldToken
-/// @notice ERC20 token representing gold that can be minted with ETH and burned to redeem ETH.
-/// @dev Minting and burning operations apply a fee and distribute a share to a lottery contract.
-contract GoldToken is ERC20 {
+/**
+ * @title GoldToken
+ * @notice ERC20 token representing gold that can be minted with ETH and burned to redeem ETH.
+ * @dev Uses the UUPS proxy upgradeability pattern.
+ */
+contract GoldToken is Initializable, ERC20Upgradeable, UUPSUpgradeable, OwnableUpgradeable {
     /*//////////////////////////////////////////////////////////////
                         STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -33,35 +37,43 @@ contract GoldToken is ERC20 {
     uint256 public constant LOTTERY_SHARE = 50;
 
     /*//////////////////////////////////////////////////////////////
-                        CONSTRUCTOR
+                        INITIALIZER FUNCTION
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Constructs the GoldToken contract.
-    /// @param _xauusdAddress Address of the XAU/USD price feed.
-    /// @param _ethusdAddress Address of the ETH/USD price feed.
-    /// @param _vrfCoordinator Address of the VRF coordinator for the lottery.
-    /// @param _linkToken Address of the LINK token used by the lottery.
-    /// @param _keyHash Key hash used for VRF.
-    /// @param _vrfFee Fee required for VRF.
-    constructor(
+    /**
+     * @notice Initializes the contract replacing the constructor.
+     * @param _xauusdAddress Address of the XAU/USD price feed.
+     * @param _ethusdAddress Address of the ETH/USD price feed.
+     * @param _vrfCoordinator Address of the VRF coordinator for the lottery.
+     * @param _linkToken Address of the LINK token used by the lottery.
+     * @param _keyHash Key hash used for VRF.
+     * @param _vrfFee Fee required for VRF.
+     */
+    function initialize(
         address _xauusdAddress,
         address _ethusdAddress,
         address _vrfCoordinator,
         address _linkToken,
         bytes32 _keyHash,
         uint256 _vrfFee
-    ) ERC20("GoldToken", "GLD") {
+    ) public initializer {
+        __ERC20_init("GoldToken", "GLD");
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
+
         priceConsumer = new PriceConsumer(_xauusdAddress, _ethusdAddress);
         lottery = new Lottery(7032);
     }
 
     /*//////////////////////////////////////////////////////////////
-                        EXTERNAL FUNCTIONS
+                      EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Mints GoldToken by sending ETH.
-    /// @dev 5% fee is deducted from the sent ETH, and 50% of that fee is forwarded to the lottery.
-    ///      The number of tokens minted is calculated based on the ETH received after fee deduction and the current gold price.
+    /**
+     * @notice Mints GoldToken by sending ETH.
+     * @dev 5% fee is deducted from the sent ETH, and 50% of that fee is forwarded to the lottery.
+     *      The number of tokens minted is calculated based on the ETH received after fee deduction and the current gold price.
+     */
     function mint() external payable {
         require(msg.value > 0, "Send ETH to mint tokens");
 
@@ -73,7 +85,6 @@ contract GoldToken is ERC20 {
 
         // Calculate the number of tokens to mint based on the gold price (price in wei)
         uint256 tokensToMint = (ethAfterFee * 1e18) / goldPriceInWei;
-
         _mint(msg.sender, tokensToMint);
 
         // Distribute fees: 50% of fee ETH is sent to the lottery contract.
@@ -81,9 +92,11 @@ contract GoldToken is ERC20 {
         payable(address(lottery)).transfer(lotteryAmount);
     }
 
-    /// @notice Burns GoldToken to redeem ETH.
-    /// @dev 5% fee is deducted from the ETH returned, and 50% of that fee is forwarded to the lottery.
-    /// @param amount The amount of tokens to burn.
+    /**
+     * @notice Burns GoldToken to redeem ETH.
+     * @dev 5% fee is deducted from the ETH returned, and 50% of that fee is forwarded to the lottery.
+     * @param amount The amount of tokens to burn.
+     */
     function burn(uint256 amount) external {
         require(balanceOf(msg.sender) >= amount, "Insufficient balance");
 
@@ -101,4 +114,15 @@ contract GoldToken is ERC20 {
         uint256 lotteryAmount = feeEth / 2;
         payable(address(lottery)).transfer(lotteryAmount);
     }
+
+    /**
+     * @notice Fallback function to receive ETH.
+     */
+    receive() external payable {}
+
+    /**
+     * @dev Function required by UUPS upgradeability pattern.
+     * It restricts upgrades to the contract owner.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
