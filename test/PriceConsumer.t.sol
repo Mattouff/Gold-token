@@ -33,7 +33,7 @@ contract PriceConsumerTest is Test {
     }
 
     /// @notice Vérifie que getGoldPrice() retourne 1e18 avec des flux de prix valides.
-    function testGetGoldPriceValid() public {
+    function testGetGoldPriceValid() view public {
         uint256 goldPrice = priceConsumer.getGoldPrice();
         assertEq(goldPrice, 1e18, "Gold price should be 1e18");
     }

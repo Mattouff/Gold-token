@@ -38,9 +38,6 @@ contract GoldTokenTest is Test {
         Receiver receiver = new Receiver();
         user = address(receiver);
 
-        // Déployer l'implémentation initiale de GoldToken
-        GoldToken logic = new GoldToken();
-
         // Encoder l'appel à initialize()
         bytes memory data = abi.encodeWithSelector(
             GoldToken.initialize.selector,

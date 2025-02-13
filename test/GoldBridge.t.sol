@@ -27,11 +27,7 @@ contract GoldBridgeTest is Test {
     // Paramètres pour GoldToken (PriceConsumer et Lottery)
     address constant DUMMY_XAUUSD = address(0x100);
     address constant DUMMY_ETHUSD = address(0x200);
-    address constant DUMMY_VRFCOORDINATOR = address(0x300);
-    address constant DUMMY_LINKTOKEN = address(0x400);
-    bytes32 constant DUMMY_KEYHASH = bytes32("keyhash");
-    uint256 constant DUMMY_VRFFEES = 1 ether;
-    
+    uint64  constant DUMMY_SUBSCRIPTION_ID = 1111;
     function setUp() public {
         user = address(0x123);
         userDest = address(0x456);
@@ -41,10 +37,7 @@ contract GoldBridgeTest is Test {
         goldToken.initialize(
             DUMMY_XAUUSD,
             DUMMY_ETHUSD,
-            DUMMY_VRFCOORDINATOR,
-            DUMMY_LINKTOKEN,
-            DUMMY_KEYHASH,
-            DUMMY_VRFFEES
+            DUMMY_SUBSCRIPTION_ID
         );
         // Forcer PriceConsumer.getGoldPrice() à retourner 1e18 pour simplifier les calculs.
         vm.mockCall(
@@ -156,7 +149,6 @@ contract GoldBridgeTest is Test {
     /// @notice Teste la réception de GoldToken via CCIP.
     function testReceiveGold() public {
         // Pour ce test, on transfère des tokens dans le bridge pour simuler des tokens verrouillés.
-        uint256 amount = 1000;
         // Mint des tokens pour l'utilisateur et les transférer au bridge.
         vm.startPrank(user);
         vm.deal(user, 10 ether);
@@ -193,7 +185,6 @@ contract GoldBridgeTest is Test {
     /// @notice Teste la réception de GoldToken via CCIP.
     function test_fail_receive_invalidAmount() public {
         // Pour ce test, on transfère des tokens dans le bridge pour simuler des tokens verrouillés.
-        uint256 amount = 1000;
         // Mint des tokens pour l'utilisateur et les transférer au bridge.
         vm.startPrank(user);
         vm.deal(user, 10 ether);
@@ -221,8 +212,6 @@ contract GoldBridgeTest is Test {
             destTokenAmounts: destTokenAmounts
         });
         
-        uint256 userBalanceBefore = goldToken.balanceOf(userDest);
-        
         // Appeler la fonction exposée pour simuler la réception du message.
         vm.prank(dummyRouter); // _ccipReceive vérifie que msg.sender == getRouter()
         vm.expectRevert("Invalid token amounts");
@@ -232,7 +221,6 @@ contract GoldBridgeTest is Test {
     /// @notice Teste la réception de GoldToken via CCIP.
     function test_fail_receive_invalidToken() public {
         // Pour ce test, on transfère des tokens dans le bridge pour simuler des tokens verrouillés.
-        uint256 amount = 1000;
         // Mint des tokens pour l'utilisateur et les transférer au bridge.
         vm.startPrank(user);
         vm.deal(user, 10 ether);
@@ -255,8 +243,6 @@ contract GoldBridgeTest is Test {
             data: abi.encode(userDest), // destinataire sur cette chaîne
             destTokenAmounts: destTokenAmounts
         });
-        
-        uint256 userBalanceBefore = goldToken.balanceOf(userDest);
         
         // Appeler la fonction exposée pour simuler la réception du message.
         vm.prank(dummyRouter); // _ccipReceive vérifie que msg.sender == getRouter()

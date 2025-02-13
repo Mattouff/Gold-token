@@ -44,25 +44,19 @@ contract GoldToken is Initializable, ERC20Upgradeable, UUPSUpgradeable, OwnableU
      * @notice Initializes the contract replacing the constructor.
      * @param _xauusdAddress Address of the XAU/USD price feed.
      * @param _ethusdAddress Address of the ETH/USD price feed.
-     * @param _vrfCoordinator Address of the VRF coordinator for the lottery.
-     * @param _linkToken Address of the LINK token used by the lottery.
-     * @param _keyHash Key hash used for VRF.
-     * @param _vrfFee Fee required for VRF.
+     * @param _subscriptionId Id of the Chainlink's subscription
      */
     function initialize(
         address _xauusdAddress,
         address _ethusdAddress,
-        address _vrfCoordinator,
-        address _linkToken,
-        bytes32 _keyHash,
-        uint256 _vrfFee
+        uint64 _subscriptionId
     ) public initializer {
         __ERC20_init("GoldToken", "GLD");
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
 
         priceConsumer = new PriceConsumer(_xauusdAddress, _ethusdAddress);
-        lottery = new Lottery(7032);
+        lottery = new Lottery(_subscriptionId);
     }
 
     /*//////////////////////////////////////////////////////////////
