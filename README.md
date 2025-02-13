@@ -99,11 +99,11 @@ This project is licensed under the MIT License.
 ## 📬 Contact
 For questions and discussions, open an issue or reach out on Discord!
 
-<div style="display: flex; gap: 10px;">
+<p style="align: center">
     <a href="https://discord.com/users/377848185827229700">
     <img src="https://img.shields.io/badge/-Mattouf94-gray?style=for-the-badge&logo=discord&logoColor=white&labelColor=5865F2">
     </a>
     <a href="https://discord.com/users/360420244088422400">
     <img src="https://img.shields.io/badge/-MattLvsr-gray?style=for-the-badge&logo=discord&logoColor=white&labelColor=5865F2">
     </a>
-</div>
+</p>
