@@ -8,24 +8,46 @@ import "@contracts/PriceConsumer.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
- * @dev A simple contract that acts as a receiver to simulate a user capable of receiving ETH.
+ * @title Receiver
+ * @notice A simple contract acting as a receiver to simulate a user capable of receiving ETH.
  */
 contract Receiver {
+    /**
+     * @notice Fallback function to accept ETH.
+     */
     fallback() external payable {}
 }
 
+/**
+ * @title GoldTokenTest
+ * @notice This contract tests the functionality of the GoldToken contract via an upgradeable proxy.
+ * It covers minting, burning, and upgradeability tests.
+ * @dev Uses Forge-std's Test framework to simulate interactions.
+ */
 contract GoldTokenTest is Test {
-    GoldToken public goldToken; // Instance via proxy
+    /// @notice Instance of the GoldToken contract (accessed via proxy).
+    GoldToken public goldToken;
+
+    /// @notice Owner of the contract (set as the test contract itself).
     address public owner;
+
+    /// @notice A user address used in tests (a Receiver contract instance).
     address public user;
+
+    /// @notice An address representing a non-owner for upgradeability tests.
     address public nonOwner;
+
+    /// @notice The ERC1967 proxy used to upgrade the GoldToken.
     ERC1967Proxy public proxy;
 
-    // Dummy initialization parameters
+    // Dummy initialization parameters for GoldToken.
     address constant DUMMY_XAUUSD = address(0x100);
     address constant DUMMY_ETHUSD = address(0x200);
     uint64 constant DUMMY_SUBSCRIPTION_ID = 1234;
 
+    /**
+     * @notice Setup function that deploys and initializes GoldToken via a proxy, and mocks the PriceConsumer.
+     */
     function setUp() public {
         owner = address(this);
         nonOwner = address(0x123);
@@ -34,7 +56,7 @@ contract GoldTokenTest is Test {
         Receiver receiver = new Receiver();
         user = address(receiver);
 
-        // Encode the call to initialize()
+        // Encode the call to initialize() for GoldToken.
         bytes memory data = abi.encodeWithSelector(
             GoldToken.initialize.selector,
             DUMMY_XAUUSD,
@@ -42,12 +64,12 @@ contract GoldTokenTest is Test {
             DUMMY_SUBSCRIPTION_ID
         );
 
-        // Deploy the upgradeable proxy
+        // Deploy the upgradeable proxy with GoldToken as the implementation.
         goldToken = new GoldToken();
         proxy = new ERC1967Proxy(address(goldToken), data);
         goldToken = GoldToken(payable(address(proxy)));
 
-        // For test simplicity, force PriceConsumer.getGoldPrice() to return 1e18 (i.e. 1 ETH)
+        // For test simplicity, force PriceConsumer.getGoldPrice() to return 1e18 (i.e., 1 ETH)
         vm.mockCall(
             address(goldToken.priceConsumer()),
             abi.encodeWithSelector(PriceConsumer.getGoldPrice.selector),
@@ -59,13 +81,18 @@ contract GoldTokenTest is Test {
                               MINT TESTS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Tests the mint() function of GoldToken.
+     * @dev Verifies that the correct amount of tokens is minted, that the lottery receives its fee,
+     * and that the contract retains the remaining ETH.
+     */
     function testMint() public {
         vm.startPrank(user);
         uint256 ethSent = 1 ether;
-        // Calculation: 5% of 1 ether = 0.05 ether fee
+        // Calculation: 5% fee on 1 ether = 0.05 ether fee
         uint256 feeEth = (ethSent * 5) / 100;      // 0.05 ether
         uint256 ethAfterFee = ethSent - feeEth;      // 0.95 ether
-        // With a goldPrice of 1e18, the number of minted tokens equals ethAfterFee (in 1e18 units)
+        // With a goldPrice of 1e18, the minted token amount equals ethAfterFee (in 1e18 units)
         uint256 expectedTokens = ethAfterFee;
 
         uint256 lotteryBalanceBefore = address(goldToken.lottery()).balance;
@@ -81,7 +108,7 @@ contract GoldTokenTest is Test {
             "Incorrect token amount"
         );
 
-        // The Lottery receives 50% of the fee (i.e. feeEth/2)
+        // The Lottery receives 50% of the fee (i.e., feeEth / 2).
         uint256 lotteryFee = feeEth / 2;  // 0.025 ether
         uint256 lotteryBalanceAfter = address(goldToken.lottery()).balance;
         assertEq(
@@ -101,6 +128,9 @@ contract GoldTokenTest is Test {
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests that mint() reverts when no ETH is sent.
+     */
     function testMintRevertIfNoEth() public {
         vm.startPrank(user);
         vm.expectRevert("Send ETH to mint tokens");
@@ -112,6 +142,11 @@ contract GoldTokenTest is Test {
                               BURN TESTS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Tests the burn() function of GoldToken.
+     * @dev Mints tokens, burns them, and verifies that the user receives the correct amount of ETH,
+     * and that the lottery receives its fee.
+     */
     function testBurn() public {
         vm.startPrank(user);
         // First, mint tokens with 1 ether.
@@ -119,7 +154,7 @@ contract GoldTokenTest is Test {
         vm.deal(user, 10 ether);
         goldToken.mint{value: ethSent}();
         uint256 initialTokenBalance = goldToken.balanceOf(user);
-        // We expect initialTokenBalance = 0.95 ether (in token units)
+        // Expected initialTokenBalance = 0.95 ether (in token units)
 
         // Calculations for burn (with goldPrice = 1e18):
         // ethToReturn = tokens burned, then a 5% fee is applied.
@@ -159,6 +194,9 @@ contract GoldTokenTest is Test {
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests that burn() reverts if the user has insufficient token balance.
+     */
     function testBurnRevertIfInsufficientBalance() public {
         vm.startPrank(user);
         vm.expectRevert("Insufficient balance");
@@ -170,6 +208,10 @@ contract GoldTokenTest is Test {
                               UPGRADE TESTS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Tests that the GoldToken proxy can be upgraded by the owner.
+     * @dev The owner calls upgradeToAndCall with a new implementation.
+     */
     function test_canUpgrade() public {
         GoldToken newImplementation = new GoldToken();
 
@@ -177,6 +219,9 @@ contract GoldTokenTest is Test {
         UUPSUpgradeable(address(goldToken)).upgradeToAndCall(address(newImplementation), "");
     }
 
+    /**
+     * @notice Tests that upgrading the GoldToken proxy fails when called by a non-owner.
+     */
     function test_cannotUpgradeUnauthorized() public {
         GoldToken newImplementation = new GoldToken();
 

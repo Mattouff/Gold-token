@@ -17,7 +17,7 @@ contract MockAggregator is AggregatorV3Interface {
     int256 public answer;
 
     constructor(int256 _answer) {
-        decimals = 8; // typiquement 8 décimales pour les agrégateurs Chainlink
+        decimals = 8; 
         description = "Mock Aggregator";
         version = 1;
         roundId = 1;
@@ -29,7 +29,7 @@ contract MockAggregator is AggregatorV3Interface {
         answer = _answer;
     }
 
-    /// @notice Simule la fonction latestRoundData().
+    /// @notice Simule the latestRoundData() function.
     function latestRoundData()
         external
         view
@@ -45,7 +45,7 @@ contract MockAggregator is AggregatorV3Interface {
         return (roundId, answer, 0, 0, roundId);
     }
 
-    /// @notice Simule la fonction getRoundData().
+    /// @notice Simule the getRoundData() function.
     function getRoundData(uint80 /* _roundId */)
         external
         view

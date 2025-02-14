@@ -8,11 +8,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract MockGoldTokenV2 is GoldToken {
     function testA() public{}
-    // Nouvelle variable d'état introduite dans V2
+    // New variable for version 2
     uint256 public newVariable;
 
-    /// @notice Fonction de réinitialisation pour la version 2.
-    /// Elle ne peut être appelée qu'une seule fois.
+    /// @notice Reset function to the V2
+    /// @notice Can be call once
     function initializeV2(uint256 _newValue) external reinitializer(2) {
         newVariable = _newValue;
     }

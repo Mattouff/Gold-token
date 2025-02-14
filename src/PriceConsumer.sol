@@ -44,11 +44,11 @@ contract PriceConsumer {
         require(xauPrice > 0, "XAU price feed error");
         require(ethPrice > 0, "ETH price feed error");
 
-        // Conversion des prix de 8 décimales à 18 décimales
-        uint256 xauUsd = uint256(xauPrice) * 1e10; // 1 XAU en USD (18 décimales)
-        uint256 ethUsd = uint256(ethPrice) * 1e10; // 1 ETH en USD (18 décimales)
+        // Convert the price to wei
+        uint256 xauUsd = uint256(xauPrice) * 1e10; // 1 XAU to USD (18 decimals)
+        uint256 ethUsd = uint256(ethPrice) * 1e10; // 1 ETH to USD (18 decimals)
 
-        // Retourne la valeur de 1 gramme d'or (1/31.1035 XAU) en ETH
-        return (xauUsd * 1e18) / (ethUsd * 311035); // 1 XAU = 31.1035 grammes
+        // Return the gold price in wei
+        return (xauUsd * 1e18) / (ethUsd * 311035); // 1 XAU = 31.1035g
     }
 }

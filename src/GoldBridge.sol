@@ -11,7 +11,7 @@ import {IRouterClient} from "@chainlink-ccip/src/v0.8/ccip/interfaces/IRouterCli
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {GoldToken} from "@contracts/GoldToken.sol"; // Assurez-vous que le chemin est correct
+import {GoldToken} from "@contracts/GoldToken.sol";
 
 /*//////////////////////////////////////////////////////////////
 //                         GOLD BRIDGE

@@ -14,17 +14,17 @@ contract PriceConsumerTest is Test {
     MockAggregator public mockXAUUSD;
     MockAggregator public mockETHUSD;
 
-    /// @notice Initialisation du test avec des valeurs permettant de retourner 1e18.
-    /// Pour obtenir 1e18, nous choisissons les valeurs suivantes :
-    /// - ethPrice = 1e8 (soit 1, avec 8 décimales)
-    /// - xauPrice = 311035e8 (soit 311035, avec 8 décimales)
-    /// Ainsi, la conversion effectuée par PriceConsumer est :
+    /// @notice Initialize the PriceConsumer contract with valid price feeds.
+    /// To have 1e18 as a result, we need the following values:
+    /// - ethPrice = 1e8 (with 1.0, 8 decimals)
+    /// - xauPrice = 311035e8 (with 311035, 8 decimals)
+    /// The conversion made by PriceConsumer is the following:
     ///    (xauUsd * 1e18) / (ethUsd * 311035)
-    /// avec xauUsd = 311035e8 * 1e10 = 311035e18 et ethUsd = 1e8 * 1e10 = 1e18,
+    /// with xauUsd = 311035e8 * 1e10 = 311035e18 and ethUsd = 1e8 * 1e10 = 1e18,
     /// d'où : (311035e18 * 1e18) / (1e18 * 311035) = 1e18.
     function setUp() public {
-        int256 ethAnswer = 1e8;           // représente 1.0 avec 8 décimales
-        int256 xauAnswer = 311035e8;        // représente 311035 avec 8 décimales
+        int256 ethAnswer = 1e8;           // represents 1.0 with 8 decimals
+        int256 xauAnswer = 311035e8;        // represents 311035 with 8 decimals
 
         mockXAUUSD = new MockAggregator(xauAnswer);
         mockETHUSD = new MockAggregator(ethAnswer);
@@ -32,34 +32,34 @@ contract PriceConsumerTest is Test {
         priceConsumer = new PriceConsumer(address(mockXAUUSD), address(mockETHUSD));
     }
 
-    /// @notice Vérifie que getGoldPrice() retourne 1e18 avec des flux de prix valides.
+    /// @notice Check that getGoldPrice() returns the correct value.
     function testGetGoldPriceValid() view public {
         uint256 goldPrice = priceConsumer.getGoldPrice();
         assertEq(goldPrice, 1e18, "Gold price should be 1e18");
     }
 
-    /// @notice Vérifie que getGoldPrice() reverte si le prix XAU est zéro.
+    /// @notice Check that getGoldPrice() reverts if the XAU price is zero.
     function testGetGoldPriceRevertsOnZeroXAU() public {
         mockXAUUSD.setAnswer(0);
         vm.expectRevert("XAU price feed error");
         priceConsumer.getGoldPrice();
     }
 
-    /// @notice Vérifie que getGoldPrice() reverte si le prix ETH est zéro.
+    /// @notice Check that getGoldPrice() reverts if the ETH price is zero.
     function testGetGoldPriceRevertsOnZeroETH() public {
         mockETHUSD.setAnswer(0);
         vm.expectRevert("ETH price feed error");
         priceConsumer.getGoldPrice();
     }
 
-    /// @notice Vérifie que getGoldPrice() reverte si le prix XAU est négatif.
+    /// @notice Check that getGoldPrice() reverts if the XAU price is negative.
     function testGetGoldPriceRevertsOnNegativeXAU() public {
         mockXAUUSD.setAnswer(-100);
         vm.expectRevert("XAU price feed error");
         priceConsumer.getGoldPrice();
     }
 
-    /// @notice Vérifie que getGoldPrice() reverte si le prix ETH est négatif.
+    /// @notice Check that getGoldPrice() reverts if the ETH price is negative.
     function testGetGoldPriceRevertsOnNegativeETH() public {
         mockETHUSD.setAnswer(-100);
         vm.expectRevert("ETH price feed error");

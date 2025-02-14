@@ -8,27 +8,41 @@ import "lib/foundry-chainlink-toolkit/lib/chainlink-brownie-contracts/contracts/
 import "lib/foundry-chainlink-toolkit/lib/chainlink-brownie-contracts/contracts/src/v0.8/dev/interfaces/IVRFSubscriptionV2Plus.sol";
 import {VRFV2PlusClient} from "lib/foundry-chainlink-toolkit/lib/chainlink-brownie-contracts/contracts/src/v0.8/dev/vrf/libraries/VRFV2PlusClient.sol";
 
-
+/**
+ * @title LotteryTest
+ * @notice This contract contains unit tests for the Lottery contract.
+ * @dev Uses Forge's Test framework to simulate CCIP and VRF interactions.
+ */
 contract LotteryTest is Test {
+    /// @notice Instance of the mock Lottery contract.
     MockLottery lottery;
-    // For Sepolia (chainid 11155111), this should be the actual coordinator address.
+
+    /// @notice The VRF coordinator address for Sepolia.
     address constant COORDINATOR_ADDRESS = 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B;
+    /// @notice The VRF subscription ID.
     uint256 constant SUBSCRIPTION_ID = 113443817678221480716193921788970781569421434945316746607573576334968878784509;
-    // Subscription owner address (must be the owner of the subscription on-chain)
+    /// @notice The subscription owner address (must be the on-chain subscription owner).
     address constant SUB_OWNER = 0xa35CC4A4096d53e718460fDDE30d36854133282A;
 
-    /// @dev Adds the Lottery contract as a consumer for the VRF subscription.
+    /**
+     * @notice Internal function to add the Lottery contract as a consumer for the VRF subscription.
+     * @param lotteryAddress The address of the Lottery contract.
+     */
     function addLotteryConsumer(address lotteryAddress) internal {
         vm.startPrank(SUB_OWNER);
         IVRFSubscriptionV2Plus(COORDINATOR_ADDRESS).addConsumer(SUBSCRIPTION_ID, lotteryAddress);
         vm.stopPrank();
     }
 
+    /**
+     * @notice Sets up the test environment.
+     * @dev Deploys the MockLottery, funds it with ETH, and either mocks VRF calls or adds the lottery as a consumer based on the chain ID.
+     */
     function setUp() public {
-        // Ensure the test contract has ample ETH.
+        // Ensure this test contract has ample ETH.
         vm.deal(address(this), 100 ether);
         
-        // Deploy the lottery.
+        // Deploy the lottery contract.
         lottery = new MockLottery(SUBSCRIPTION_ID);
 
         // Pre-fund the lottery contract with 1 ether.
@@ -36,22 +50,29 @@ contract LotteryTest is Test {
         require(success, "Pre-funding lottery failed");
 
         if (block.chainid != 11155111) {
-            // Use an empty expected calldata so that any call with the function selector is intercepted.
+            // If not on Sepolia, mock any call to the coordinator to return a dummy request ID.
             vm.mockCall(
                 COORDINATOR_ADDRESS,
                 bytes(""),
                 abi.encode(uint256(123))
             );
         } else {
+            // On Sepolia, add the lottery as a consumer of the VRF subscription.
             addLotteryConsumer(address(lottery));
         }
     }
 
+    /**
+     * @notice Tests that distributeFees() reverts when called with zero ETH.
+     */
     function testDistributeFeesRevertOnZeroValue() public {
         vm.expectRevert("No ETH sent");
         lottery.distributeFees{value: 0}();
     }
 
+    /**
+     * @notice Tests that distributeFees() correctly adds the caller as a participant and updates the lottery pool.
+     */
     function testDistributeFeesAddsParticipantAndUpdatesPool() public {
         uint256 fee = 1 ether;
         lottery.distributeFees{value: fee}();
@@ -63,6 +84,9 @@ contract LotteryTest is Test {
         assertEq(participant0, address(this), "The participant must be the calling address");
     }
 
+    /**
+     * @notice Tests that a VRF request is triggered after 10 participants have called distributeFees().
+     */
     function testRequestRandomWordsTriggeredAfter10Participants() public {
         uint256 fee = 0.1 ether;
         for (uint256 i = 0; i < 10; i++) {
@@ -76,6 +100,11 @@ contract LotteryTest is Test {
         }
     }
 
+    /**
+     * @notice Tests that fulfillRandomWords() resets the lottery state and transfers funds to the selected winner.
+     * @dev Simulates 10 participants, triggers the VRF callback, and verifies that the lottery pool is reset,
+     * the participants array is cleared, and the winner receives the correct payout.
+     */
     function testFulfillRandomWordsResetsStateAndTransfersFunds() public {
         uint256 fee = 0.1 ether;
         uint256 nbParticipants = 10;
@@ -85,7 +114,7 @@ contract LotteryTest is Test {
         
         // Record the lottery pool amount (expected to be 10 * fee).
         uint256 poolBefore = lottery.lotteryPool();
-        // Record the winner's (address(this)) balance before the payout.
+        // Record the winner's balance before the payout.
         uint256 winnerBalanceBefore = address(this).balance;
         
         uint256 reqId = lottery.lastRequestId();
@@ -116,6 +145,9 @@ contract LotteryTest is Test {
         );
     }
 
+    /**
+     * @notice Tests that fulfillRandomWords() reverts when called with an invalid request ID.
+     */
     function testFulfillRandomWordsFailsForInvalidRequest() public {
         uint256 invalidRequestId = 999; // An ID that has never been created.
         uint256[] memory randomWords = new uint256[](1);
@@ -125,6 +157,8 @@ contract LotteryTest is Test {
         lottery.externalFulfillRandomWords(invalidRequestId, randomWords);
     }
 
-    // Allow this contract to receive ETH during transfers.
+    /**
+     * @notice Allows this test contract to receive ETH during transfers.
+     */
     receive() external payable {}
 }
