@@ -1,103 +1,146 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+/*//////////////////////////////////////////////////////////////
+//                           IMPORTS
+//////////////////////////////////////////////////////////////*/
 import "lib/foundry-chainlink-toolkit/lib/chainlink-brownie-contracts/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol"; 
 import {VRFConsumerBaseV2Plus} from "lib/foundry-chainlink-toolkit/lib/chainlink-brownie-contracts/contracts/src/v0.8/dev/vrf/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "lib/foundry-chainlink-toolkit/lib/chainlink-brownie-contracts/contracts/src/v0.8/dev/vrf/libraries/VRFV2PlusClient.sol";
 
-/// @title Lottery Contract
-/// @notice This contract manages a lottery system using Chainlink VRF for randomness.
-/// @dev Inherits from VRFConsumerBaseV2Plus to integrate with Chainlink VRF.
+/*//////////////////////////////////////////////////////////////
+//                      LOTTERY CONTRACT
+//////////////////////////////////////////////////////////////*/
+/**
+ * @title Lottery
+ * @notice This contract manages a lottery using Chainlink VRF to generate a random number.
+ * @dev Only the GoldToken contract (owner) can trigger the lottery via functions marked with `onlyOwner`.
+ */
 contract Lottery is VRFConsumerBaseV2Plus {
-    /// @notice The Chainlink VRF Coordinator interface.
-    VRFCoordinatorV2Interface COORDINATOR;
+
+    /*//////////////////////////////////////////////////////////////
+                           STATE VARIABLES
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Interface for the Chainlink VRF Coordinator.
+    VRFCoordinatorV2Interface public COORDINATOR;
 
     /// @notice The key hash used to identify the Chainlink VRF job.
     bytes32 internal keyHash;
 
     /// @notice The subscription ID for Chainlink VRF.
-    uint64 public s_subscriptionId;
+    uint256 public s_subscriptionId;
 
-    /// @notice Number of confirmations required before fulfilling randomness.
-    uint16 requestConfirmations = 3;
+    /// @notice The number of confirmations required before fulfillment.
+    uint16 public requestConfirmations = 3;
 
-    /// @notice Gas limit for the callback function.
-    uint32 callbackGasLimit = 100000;
+    /// @notice The gas limit for the VRF callback function.
+    uint32 public callbackGasLimit = 100000;
 
-    /// @notice Number of random words requested.
-    uint32 numWords = 1;
+    /// @notice The number of random words requested.
+    uint32 public numWords = 1;
 
-    /// @notice The latest random number received.
+    /// @notice The latest random result received.
     uint256 public randomResult;
 
-    /// @notice List of participants in the lottery.
+    /// @notice Array of lottery participants.
     address[] public participants;
 
-    /// @notice Total amount of ETH collected in the lottery pool.
+    /// @notice Total ETH collected in the lottery pool.
     uint256 public lotteryPool;
 
-    /// @notice Structure to track the status of VRF requests.
+    /// @notice Structure to track the status of a VRF request.
     struct RequestStatus {
         uint256[] randomWords;
         bool exists;
         bool fulfilled;
     }
 
-    /// @notice Mapping of request IDs to their statuses.
+    /// @notice Mapping from VRF request ID to its status.
     mapping(uint256 => RequestStatus) public s_requests;
 
-    /// @notice List of all VRF request IDs.
+    /// @notice Array of all VRF request IDs.
     uint256[] public requestIds;
 
-    /// @notice The last VRF request ID made.
+    /// @notice The last VRF request ID.
     uint256 public lastRequestId;
 
+    /*//////////////////////////////////////////////////////////////
+                               EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Emitted when a lottery winner is selected.
-    /// @param winner The address of the lottery winner.
-    /// @param amount The amount of ETH won.
     event LotteryWinner(address indexed winner, uint256 amount);
 
-    /// @notice Emitted when a randomness request is sent to Chainlink VRF.
-    /// @param requestId The ID of the randomness request.
-    /// @param numWords The number of random words requested.
+    /// @notice Emitted when a VRF request is sent.
     event RequestSent(uint256 requestId, uint32 numWords);
 
-    /// @notice Constructs the Lottery contract and initializes Chainlink VRF.
-    /// @param subscriptionId The subscription ID for Chainlink VRF.
-    constructor(uint64 subscriptionId)
+    /*//////////////////////////////////////////////////////////////
+                          CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Constructor for the Lottery contract.
+     * @param subscriptionId The subscription ID for Chainlink VRF.
+     */
+    constructor(uint256 subscriptionId)
         VRFConsumerBaseV2Plus(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B)
     {
         s_subscriptionId = subscriptionId;
         COORDINATOR = VRFCoordinatorV2Interface(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B);
-        keyHash = 0x6c3699283bda56ad74f6b855546325b68d482e983852a48db59e5c46df3f6f2b;
+        keyHash = 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae;
     }
 
-    /// @notice Fallback function to accept ETH deposits.
+    /*//////////////////////////////////////////////////////////////
+                        FALLBACK FUNCTION
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Fallback function to receive ETH.
     receive() external payable {}
 
-    /// @notice Accepts ETH fees and registers the sender as a lottery participant.
-    /// @dev Triggers a randomness request when at least 10 participants are registered.
-    function distributeFees() external payable {
-        require(msg.value > 0, "No fees to distribute");
+    /*//////////////////////////////////////////////////////////////
+                      EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Collects fees and adds a participant.
+     * @dev Only the GoldToken contract (owner) can call this function.
+     */
+    function distributeFees() external payable onlyOwner {
+        require(msg.value > 0, "No ETH sent");
         lotteryPool += msg.value;
         participants.push(msg.sender);
 
+        // Trigger the lottery when there are at least 10 participants.
         if (participants.length >= 10) {
-            requestRandomWords();
+            _requestRandomWords();
         }
     }
 
-    /// @notice Requests random words from Chainlink VRF.
-    /// @return requestId The ID of the randomness request.
-    function requestRandomWords() public returns (uint256 requestId) {
-        requestId = COORDINATOR.requestRandomWords(
-            keyHash,
-            s_subscriptionId,
-            requestConfirmations,
-            callbackGasLimit,
-            numWords
-        );
+    /*//////////////////////////////////////////////////////////////
+                      PRIVATE FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Requests random words from Chainlink VRF.
+     * @dev Only the GoldToken contract (owner) can call this function.
+     * @return requestId The VRF request ID.
+     */
+    function _requestRandomWords() private returns (uint256 requestId) {
+        VRFV2PlusClient.RandomWordsRequest memory req = VRFV2PlusClient.RandomWordsRequest({
+            keyHash: keyHash,
+            subId: s_subscriptionId,
+            requestConfirmations: requestConfirmations,
+            callbackGasLimit: callbackGasLimit,
+            numWords: numWords,
+            // Set nativePayment to false to pay for VRF requests with LINK instead of native ETH.
+            extraArgs: VRFV2PlusClient._argsToBytes(
+                VRFV2PlusClient.ExtraArgsV1({ nativePayment: true })
+            )
+        });
+        requestId = s_vrfCoordinator.requestRandomWords(req);
         s_requests[requestId] = RequestStatus({
-            randomWords: new uint256[](0),       
+            randomWords: new uint256[](0),
             exists: true,
             fulfilled: false
         });
@@ -106,9 +149,15 @@ contract Lottery is VRFConsumerBaseV2Plus {
         emit RequestSent(requestId, numWords);
     }
 
-    /// @notice Callback function used by Chainlink VRF to deliver randomness.
-    /// @param requestId The ID of the fulfilled randomness request.
-    /// @param randomWords The array of random words returned by Chainlink VRF.
+    /*//////////////////////////////////////////////////////////////
+                     INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Callback function used by Chainlink VRF to deliver random words.
+     * @param requestId The ID of the completed VRF request.
+     * @param randomWords The random words returned by Chainlink VRF.
+     */
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
         require(s_requests[requestId].exists, "Request not found");
 
@@ -121,6 +170,7 @@ contract Lottery is VRFConsumerBaseV2Plus {
         payable(winner).transfer(lotteryPool);
         emit LotteryWinner(winner, lotteryPool);
 
+        // Reset state for the next lottery round.
         participants = new address[](0);
         lotteryPool = 0;
     }
