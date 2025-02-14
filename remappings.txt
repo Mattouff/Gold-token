@@ -1,4 +1,5 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@oppenzeppelin-uppgradeable/=lib/openzeppelin-contracts/contracts-upgradeable/
 @chainlink/=lib/foundry-chainlink-toolkit
 @chainlink-ccip/=lib/ccip/contracts
 @contracts=src
